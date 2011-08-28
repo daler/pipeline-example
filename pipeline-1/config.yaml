@@ -1,0 +1,19 @@
+output dir: run1
+
+# used for htseq-count
+gff: ../test/example.gff
+
+# list of sample definitions
+samples:
+    -
+        label: sample-1
+        fastq: ../test/example.fastq.1
+
+    -
+        label: sample-2
+        fastq: ../test/example.fastq.2
+
+bowtie params: -p8 --solexa1.3-quals --sam
+index: ../test/example-index
+
+htseq params: --idattr=ID -t=gene
