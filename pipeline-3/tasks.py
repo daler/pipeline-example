@@ -5,57 +5,7 @@ import sys
 import subprocess
 import yaml
 import tempfile
-
-
-class Result(object):
-    def __init__(self, infiles, outfiles, log=None, stdout=None, stderr=None,
-                 desc=None, failed=False, cmds=None):
-        if isinstance(infiles, basestring):
-            infiles = [infiles]
-        if isinstance(outfiles, basestring):
-            outfiles = [outfiles]
-        self.infiles = infiles
-        self.outfiles = outfiles
-        self.log = log
-        self.stdout = stdout
-        self.stderr = stderr
-        self.elapsed = None
-        self.failed = failed
-        self.desc = desc
-        self.cmds = cmds
-
-    def report(self, logger_proxy, logging_mutex):
-        """
-        Prints a nice report
-        """
-        with logging_mutex:
-            if not self.desc:
-                self.desc = ""
-            logger_proxy.info(' Task: %s' % self.desc)
-            logger_proxy.info('     Time: %s' % datetime.datetime.now())
-            if self.cmds is not None:
-                logger_proxy.debug('     Commands: %s' % str(self.cmds))
-            for output_fn in self.outfiles:
-                output_fn = os.path.normpath(os.path.relpath(output_fn))
-                logger_proxy.info('     Output:   %s' % output_fn)
-            if self.log is not None:
-                logger_proxy.info('     Log:      %s' % self.log)
-            if self.failed:
-                logger_proxy.error('=' * 80)
-                logger_proxy.error('Error in %s' % self.desc)
-                if self.cmds:
-                    logger_proxy.error(str(self.cmds))
-                if self.stderr:
-                    logger_proxy.error('====STDERR====')
-                    logger_proxy.error(self.stderr)
-                if self.stdout:
-                    logger_proxy.error('====STDOUT====')
-                    logger_proxy.error(self.stdout)
-                if self.log is not None:
-                    logger_proxy.error('   Log: %s' % self.log)
-                logger_proxy.error('=' * 80)
-                sys.exit(1)
-            logger_proxy.info('')
+from helpers import Result, timeit
 
 
 def fastq_to_other_files(config, extension):
@@ -88,6 +38,7 @@ def fastq_to_other_files(config, extension):
         yield infile, outfiles
 
 
+@timeit
 def bowtie(fastq, outfile, config):
     """
     Use bowtie to map `fastq`, saving the SAM file as `outfile`.  Ensures that
@@ -112,6 +63,7 @@ def bowtie(fastq, outfile, config):
             infiles=fastq, outfiles=outfile, cmds=' '.join(cmds), log=logfn)
 
 
+@timeit
 def count(samfile, countfile, config):
     cmds = ['htseq-count']
     cmds += config['htseq params'].split()
@@ -130,6 +82,7 @@ def count(samfile, countfile, config):
             cmds=' '.join(cmds))
 
 
+@timeit
 def clip(fastq, clipped_fastq, config):
     adapter = config['adapter']
     clipping_report = clipped_fastq + '.clipping_report'
@@ -187,6 +140,7 @@ def bam2sam(bam, sam):
     return Result(sam, bam, stderr=stderr, cmds=' '.join(cmds))
 
 
+@timeit
 def filter(sam, outfile, config):
     bam = tempfile.mktemp()
     filtered_bam = tempfile.mktemp()

@@ -4,63 +4,13 @@ import os
 import sys
 import subprocess
 import yaml
+from helpers import Result, timeit
 
-
-class Result(object):
-    def __init__(self, infiles, outfiles, log=None, stdout=None, stderr=None,
-                 desc=None, failed=False, cmds=None):
-        if isinstance(infiles, basestring):
-            infiles = [infiles]
-        if isinstance(outfiles, basestring):
-            outfiles = [outfiles]
-        self.infiles = infiles
-        self.outfiles = outfiles
-        self.log = log
-        self.stdout = stdout
-        self.stderr = stderr
-        self.elapsed = None
-        self.failed = failed
-        self.desc = desc
-        self.cmds = cmds
-
-    def report(self, logger_proxy, logging_mutex):
-        """
-        Prints a nice report
-        """
-        with logging_mutex:
-            if not self.desc:
-                self.desc = ""
-            logger_proxy.info(' Task: %s' % self.desc)
-            logger_proxy.info('     Time: %s' % datetime.datetime.now())
-            if self.cmds is not None:
-                logger_proxy.debug('     Commands: %s' % str(self.cmds))
-            for output_fn in self.outfiles:
-                output_fn = os.path.normpath(os.path.relpath(output_fn))
-                logger_proxy.info('     Output:   %s' % output_fn)
-            if self.log is not None:
-                logger_proxy.info('     Log:      %s' % self.log)
-            if self.failed:
-                logger_proxy.error('=' * 80)
-                logger_proxy.error('Error in %s' % self.desc)
-                if self.cmds:
-                    logger_proxy.error(str(self.cmds))
-                if self.stderr:
-                    logger_proxy.error('====STDERR====')
-                    logger_proxy.error(self.stderr)
-                if self.stdout:
-                    logger_proxy.error('====STDOUT====')
-                    logger_proxy.error(self.stdout)
-                if self.log is not None:
-                    logger_proxy.error('   Log: %s' % self.log)
-                logger_proxy.error('=' * 80)
-                sys.exit(1)
-            logger_proxy.info('')
 
 def fastq_to_other_files(config, extension):
     """
-    generates input/output files for each sample
-    `extension`.  This is the primary mapping to go from fastq to analyzed
-    data.
+    Generates input/output files for each sample `extension`.  This is the
+    primary mapping to go from fastq to analyzed data.
 
     output dirs are also created if necessary.
 
@@ -86,6 +36,7 @@ def fastq_to_other_files(config, extension):
         yield infile, outfiles
 
 
+@timeit
 def bowtie(fastq, outfile, config):
     """
     Use bowtie to map `fastq`, saving the SAM file as `outfile`.  Ensures that
@@ -110,7 +61,11 @@ def bowtie(fastq, outfile, config):
             infiles=fastq, outfiles=outfile, cmds=' '.join(cmds), log=logfn)
 
 
+@timeit
 def count(samfile, countfile, config):
+    """
+    Call htseq-count on the sam file, creating a table of read counts per gene
+    """
     cmds = ['htseq-count']
     cmds += config['htseq params'].split()
     cmds += [samfile,
