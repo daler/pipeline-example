@@ -34,7 +34,7 @@ try:
 except KeyError:
     filter_bed = None
 
-if filter_bed is not None:
+if filter_bed:
     @transform(
             map, suffix('.clipped.bowtie.sam'), '.clipped.bowtie.sam.filtered')
     def filter(infile, outfile):
@@ -42,12 +42,14 @@ if filter_bed is not None:
         report(result)
     parent_task = filter
     parent_suffix = '.clipped.bowtie.sam.filtered'
+    result_suffix = '.clipped.bowtie.sam.filtered.count'
 else:
     parent_task = map
     parent_suffix = '.clipped.bowtie.sam'
+    result_suffix = '.clipped.bowtie.sam.count'
 
 
-@transform(map, suffix('.bowtie.sam'), '.bowtie.sam.count')
+@transform(parent_task, suffix(parent_suffix), result_suffix)
 def count(infile, outfile):
     result = tasks.count(infile, outfile, config)
     report(result)
